@@ -757,6 +757,12 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
 
   Future<void> _exportDatabaseAsSQL(BuildContext context) async {
     try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
+      );
+
       final backupPath = await BackupService.instance.exportDatabaseAsSQL();
       
       if (mounted) {
@@ -822,25 +828,9 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
 
       if (!mounted) return;
 
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const AlertDialog(
-          content: Row(
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(width: 20),
-              Text('Importando backup...'),
-            ],
-          ),
-        ),
-      );
-
       final success = await BackupService.instance.importDatabaseFromFile();
       
       if (mounted) {
-        Navigator.pop(context);
-        
         if (!success) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -863,7 +853,6 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
       }
     } catch (e) {
       if (mounted) {
-        Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('❌ Error: $e'),

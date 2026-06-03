@@ -10,12 +10,13 @@ import '../models/subcategory.dart';
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
   static Database? _database;
+  static const String _dbFileName = 'chronowealth.db';
 
   DatabaseHelper._init();
 
   Future<Database> get database async {
     if (_database != null) return _database!;
-    _database = await _initDB('chronowealth.db');
+    _database = await _initDB(_dbFileName);
     return _database!;
   }
 
@@ -29,6 +30,20 @@ class DatabaseHelper {
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
+  }
+
+  Future<void> closeDatabase() async {
+    final db = _database;
+    if (db != null && db.isOpen) {
+      await db.close();
+    }
+    _database = null;
+  }
+
+  Future<Database> reopenDatabase() async {
+    await closeDatabase();
+    _database = await _initDB(_dbFileName);
+    return _database!;
   }
 
   Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
