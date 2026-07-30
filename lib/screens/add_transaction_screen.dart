@@ -1,5 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path/path.dart' as path;
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../models/category.dart';
@@ -41,6 +46,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   bool _didHydrateFromExisting = false;
   bool _isInterestBearingTransaction = false;
   bool _isApplyingInterest = false;
+  final ImagePicker _imagePicker = ImagePicker();
+  final List<String> _selectedImagePaths = [];
 
   @override
   void initState() {
@@ -59,6 +66,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       if (transaction.interestRate > 0) {
         _interestRateController.text = transaction.interestRate.toStringAsFixed(2);
       }
+      _selectedImagePaths.addAll(transaction.imagePaths);
     }
   }
 
@@ -545,6 +553,65 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
               const SizedBox(height: 24),
 
+              Text(
+                'Referencias visuales',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppTheme.backgroundCard,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppTheme.chromeMedium.withValues(alpha: 0.08)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Sube fotos o capturas para tenerlas como referencia local en esta transacción.',
+                      style: TextStyle(
+                        color: AppTheme.chromeMedium.withValues(alpha: 0.85),
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        for (final path in _selectedImagePaths)
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.file(
+                              File(path),
+                              width: 88,
+                              height: 88,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        InkWell(
+                          onTap: _pickImages,
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            width: 88,
+                            height: 88,
+                            decoration: BoxDecoration(
+                              color: AppTheme.backgroundCardLight,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppTheme.chromeMedium.withValues(alpha: 0.2)),
+                            ),
+                            child: const Icon(Icons.add_photo_alternate_outlined, size: 32),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
               // Selector de fecha
               Text(
                 'Fecha',
@@ -786,6 +853,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         interestLastApplied: interestEnabled
             ? (widget.transactionToEdit?.interestLastApplied ?? DateTime.now())
             : null,
+        imagePaths: List<String>.from(_selectedImagePaths),
       );
 
       final provider = context.read<FinanceProvider>();
@@ -823,6 +891,52 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         setState(() {
           _isLoading = false;
         });
+      }
+    }
+  }
+
+  Future<void> _pickImages() async {
+    try {
+      final pickedFiles = await _imagePicker.pickMultiImage();
+      if (pickedFiles.isEmpty) {
+        return;
+      }
+
+      final appDir = await getApplicationDocumentsDirectory();
+      final imagesDir = Directory(path.join(appDir.path, 'local_images'));
+      await imagesDir.create(recursive: true);
+
+      final copiedPaths = <String>[];
+      for (final file in pickedFiles) {
+        if (file.path.isEmpty) {
+          continue;
+        }
+
+        final destinationPath = path.join(
+          imagesDir.path,
+          '${DateTime.now().millisecondsSinceEpoch}_${path.basename(file.path)}',
+        );
+        final sourceFile = File(file.path);
+        if (await sourceFile.exists()) {
+          await sourceFile.copy(destinationPath);
+          copiedPaths.add(destinationPath);
+        }
+      }
+
+      if (copiedPaths.isNotEmpty) {
+        setState(() {
+          for (final copiedPath in copiedPaths) {
+            if (!_selectedImagePaths.contains(copiedPath)) {
+              _selectedImagePaths.add(copiedPath);
+            }
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('No se pudieron cargar las imágenes: $e')),
+        );
       }
     }
   }

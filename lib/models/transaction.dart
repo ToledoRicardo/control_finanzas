@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 class FinancialTransaction {
   final int? id;
   final int categoryId;
@@ -10,6 +12,7 @@ class FinancialTransaction {
   final bool isInterestBearing;
   final double interestRate;
   final DateTime? interestLastApplied;
+  final List<String> imagePaths;
 
   FinancialTransaction({
     this.id,
@@ -23,6 +26,7 @@ class FinancialTransaction {
     this.isInterestBearing = false,
     this.interestRate = 0.0,
     this.interestLastApplied,
+    this.imagePaths = const [],
   });
 
   Map<String, dynamic> toMap() {
@@ -38,6 +42,7 @@ class FinancialTransaction {
       'isInterestBearing': isInterestBearing ? 1 : 0,
       'interestRate': interestRate,
       'interestLastApplied': interestLastApplied?.toIso8601String(),
+      'imagePaths': jsonEncode(imagePaths),
     };
   }
 
@@ -54,6 +59,7 @@ class FinancialTransaction {
       isInterestBearing: _parseExcludeFlag(map['isInterestBearing']),
       interestRate: _parseRate(map['interestRate']),
       interestLastApplied: _parseDate(map['interestLastApplied']),
+      imagePaths: _parseImagePaths(map['imagePaths']),
     );
   }
 
@@ -69,6 +75,7 @@ class FinancialTransaction {
     bool? isInterestBearing,
     double? interestRate,
     DateTime? interestLastApplied,
+    List<String>? imagePaths,
   }) {
     return FinancialTransaction(
       id: id ?? this.id,
@@ -82,6 +89,7 @@ class FinancialTransaction {
       isInterestBearing: isInterestBearing ?? this.isInterestBearing,
       interestRate: interestRate ?? this.interestRate,
       interestLastApplied: interestLastApplied ?? this.interestLastApplied,
+      imagePaths: imagePaths ?? this.imagePaths,
     );
   }
 
@@ -113,5 +121,20 @@ class FinancialTransaction {
       return DateTime.tryParse(value);
     }
     return null;
+  }
+
+  static List<String> _parseImagePaths(dynamic value) {
+    if (value is List) {
+      return value.whereType<String>().toList();
+    }
+    if (value is String && value.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(value);
+        if (decoded is List) {
+          return decoded.whereType<String>().toList();
+        }
+      } catch (_) {}
+    }
+    return const [];
   }
 }

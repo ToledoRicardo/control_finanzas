@@ -26,7 +26,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 7,
+      version: 8,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
@@ -163,6 +163,12 @@ class DatabaseHelper {
         )
       ''');
     }
+
+    if (oldVersion < 8) {
+      await db.execute('''
+        ALTER TABLE transactions ADD COLUMN imagePaths TEXT NOT NULL DEFAULT '[]'
+      ''');
+    }
   }
 
   Future _createDB(Database db, int version) async {
@@ -194,6 +200,7 @@ class DatabaseHelper {
         isInterestBearing INTEGER NOT NULL DEFAULT 0,
         interestRate REAL NOT NULL DEFAULT 0.0,
         interestLastApplied TEXT,
+        imagePaths TEXT NOT NULL DEFAULT '[]',
         FOREIGN KEY (categoryId) REFERENCES categories (id) ON DELETE CASCADE
       )
     ''');
